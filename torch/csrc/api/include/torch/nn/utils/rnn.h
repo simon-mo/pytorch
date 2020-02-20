@@ -6,6 +6,7 @@
 namespace torch {
 namespace nn {
 namespace utils {
+namespace rnn {
 
 Tensor invert_permutation(const Tensor& permutation) {
   if (!permutation.defined()) {
@@ -278,6 +279,7 @@ std::tuple<Tensor, Tensor> pad_packed_sequence(
   return std::make_tuple(padded_output, lengths);
 }
 
+} // namespace rnn
 } // namespace utils
 } // namespace nn
 } // namespace torch

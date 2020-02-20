@@ -182,6 +182,61 @@ TEST_F(NNUtilsTest, ConvertParameters) {
   }
 }
 
+int64_t PackedSequenceTest_batch_size = 5;
+int64_t PackedSequenceTest_max_length = 6;
+
+/*
+    def _ordered_sequence(self, tensor_type):
+        """Create ordered list of random sequences"""
+        seqs = [tensor_type(random.randint(1, self.max_length))
+                for _ in range(self.batch_size)]
+        seqs = [s.random_(-128, 128) for s in seqs]
+        ordered = sorted(seqs, key=len, reverse=True)
+        return ordered
+*/
+template <typename Dtype>
+std::vector<Tensor> _ordered_sequence() {
+  std::vector<Tensor> seqs;
+  seqs.reserve(PackedSequenceTest_batch_size);
+  for (int64_t i = 0; i < PackedSequenceTest_batch_size, i++) {
+    seqs.emplace_back(torch::empty({
+      torch::randint(1, PackedSequenceTest_max_length, {1}).item<int64_t>()
+    }, Dtype));
+  }
+  for (auto& s : seqs) {
+    s.random_(-128, 128);
+  }
+  auto compare_tensor_size = [&](cosnt Tensor& t1, cosnt Tensor& t2) {
+    return t1.size(0) > t2.size(0);
+  }
+  sort(seqs.begin(), seqs.end(), compare_tensor_size);
+  for (const auto& s : seqs) {
+    std::cout << s << std::endl; // yf225 TODO: DEBUG
+  }
+  return seqs;
+}
+
+/*
+def _padded_sequence(self, tensor_type):
+        """Create Tensor of random padded sequences"""
+        ordered = self._ordered_sequence(tensor_type)
+        lengths = list(map(len, ordered))
+        padded_tensor = rnn_utils.pad_sequence(ordered)
+        return padded_tensor, lengths
+*/
+template <typename Dtype>
+std::vector<Tensor> _padded_sequence() {
+  // Create Tensor of random padded sequences
+  auto ordered = _ordered_sequence<Dtype>();
+  std::vector<int64_t> lengths;
+  lengths.reserve(ordered.size());
+  for (const auto& t : ordered) {
+    lengths.emplace_back(t.size(0));
+  }
+  auto padded_tensor = torch::nn::utils::rnn::pad_sequence(ordered);
+  // yf225 TODO: alright, let's merge the pad_sequence PR https://github.com/pytorch/pytorch/pull/32387 first!!!
+  // yf225 TODO: also, let's try to make the test cases for the new util functions simple... no need to test too much, let's just do unit test for each function
+}
 /*
 class PackedSequenceTest(TestCase):
 
@@ -202,21 +257,6 @@ class PackedSequenceTest(TestCase):
         super(PackedSequenceTest, self).__init__(*args, **kwargs)
         self.batch_size = 5
         self.max_length = 6
-
-    def _ordered_sequence(self, tensor_type):
-        """Create ordered list of random sequences"""
-        seqs = [tensor_type(random.randint(1, self.max_length))
-                for _ in range(self.batch_size)]
-        seqs = [s.random_(-128, 128) for s in seqs]
-        ordered = sorted(seqs, key=len, reverse=True)
-        return ordered
-
-    def _padded_sequence(self, tensor_type):
-        """Create Tensor of random padded sequences"""
-        ordered = self._ordered_sequence(tensor_type)
-        lengths = list(map(len, ordered))
-        padded_tensor = rnn_utils.pad_sequence(ordered)
-        return padded_tensor, lengths
 
     def test_type_casts(self):
         """Test type casting of `PackedSequence` against type casting of tensor"""
