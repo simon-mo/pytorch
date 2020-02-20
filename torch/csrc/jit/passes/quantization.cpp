@@ -419,7 +419,6 @@ class InsertObserversHelper {
 
   void insertObserverFor(
       Value* v,
-      Graph* g,
       script::Module& module,
       const c10::optional<QConfig>& qconfig_opt);
 
@@ -696,7 +695,6 @@ ModuleMethodVector InsertObserversHelper::getInvokedMethods(
 // and insert a call to observer forward function
 void InsertObserversHelper::insertObserverFor(
     Value* v,
-    Graph* g,
     script::Module& module,
     const c10::optional<QConfig>& qconfig_opt) {
   if (!qconfig_opt) {
@@ -717,6 +715,7 @@ void InsertObserversHelper::insertObserverFor(
     observer_name = "_observer_" + c10::to_string(uid_++);
   }
   module.register_module(observer_name, observer);
+  auto* g = v->owningGraph();
   graph_observer_map_[g].push_back(std::make_tuple(observer_name, observer));
 
   // Get handle of observer module
@@ -955,7 +954,7 @@ void InsertObserversHelper::insertObservers(
   for (size_t idx = 1; idx < method.num_inputs(); ++idx) {
     auto& v = graph->inputs()[idx];
     if (!values_to_skip_.count(v) && valueNeedsToBeQuantized(v)) {
-      insertObserverFor(v, v->owningGraph(), module, qconfig_opt);
+      insertObserverFor(v, module, qconfig_opt);
     }
   }
 
@@ -984,7 +983,7 @@ void InsertObserversHelper::insertObservers(
 
   // Actually add observer nodes.
   for (Value* v : values_to_observe) {
-    insertObserverFor(v, v->owningGraph(), module, qconfig_opt);
+    insertObserverFor(v, module, qconfig_opt);
   }
 }
 
